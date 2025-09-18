@@ -1,47 +1,160 @@
-// contexts/AuthContext.tsx
-import type { User } from "@/types/common.type";
+import { User } from "@/types/common.type";
 import { supabase } from "@/utils/supabase";
-import { createContext, useContext, useMemo, useState } from "react";
+import { createContext, useEffect, useState } from "react";
 
 interface AuthContextProps {
-  user: any | null; // puedes mapearlo a tu User si guardas perfil
-  login: (email: string, password: string) => Promise<boolean>;
-  register: (user: User, password: string) => Promise<boolean>;
-  logout: () => Promise<void>;
+    user: User | null,
+    login: (email: string, password: string) => Promise<boolean>,
+    register: (user: User, password: string) => Promise<boolean>,
+    updateProfile: (profileData: Partial<User>) => Promise<boolean>
 }
 
 export const AuthContext = createContext({} as AuthContextProps);
 
-export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const [user, setUser] = useState<any | null>(null);
+export const AuthProvider = ({ children }: any) => {
 
-  const login = async (email: string, password: string) => {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error || !data.user) {
-      console.error("Supabase login error:", error?.message);
-      return false;
+    // varibles
+    // USER -> { email:string, password:string, name:string}
+    const [user, setUser] = useState(null as any);
+
+    useEffect(()=>{
+      console.log({
+        user
+      })
+    },[user])
+
+    // funciones
+
+    const login = async (email: string, password: string) => {
+        try {
+            // Authenticate with Supabase Auth
+            const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+
+            if (error) {
+                console.error('Login error:', error.message);
+                return false;
+            }
+            
+            if (data.user) {
+                // Fetch complete user profile from profiles table
+                const { data: profileData, error: profileError } = await supabase
+                    .from('profiles')
+                    .select('*')
+                    .eq('id', data.user.id)
+                    .single();
+
+                if (profileError) {
+                    console.error('Profile fetch error:', profileError.message);
+                    // Fallback: use basic auth data if profile fetch fails
+                    setUser({
+                        id: data.user.id,
+                        email: data.user.email!,
+                        name: data.user.user_metadata.name || data.user.email!.split('@')[0],
+                        username: data.user.user_metadata.username || data.user.email!.split('@')[0]
+                    });
+                } else {
+                    // Set complete profile data
+                    setUser(profileData);
+                }
+
+                return true;
+            }
+
+            return false;
+        } catch (error) {
+            console.error('Login error:', error);
+            return false;
+        }
     }
-    setUser(data.user);
-    return true;
-  };
 
-  const register = async (u: User, password: string) => {
-    const { data, error } = await supabase.auth.signUp({ email: u.email, password });
-    if (error) {
-      console.error("Supabase register error:", error.message);
-      return false;
+    const register = async (user: User, password: string): Promise<boolean> => {
+        try {
+            const { data, error } = await supabase.auth.signUp({
+                email: user.email,
+                password
+            });
+
+            if (error) {
+                console.error('Registration error:', error.message);
+                throw new Error(error.message);
+            }
+
+            console.log({
+              data
+            })
+
+            if (data.user) {
+                const { error: profileError } = await supabase
+                    .from('profiles')
+                    .insert({
+                        id: data.user.id,
+                        email: user.email,
+                        name: user.name,
+                        username: user.username
+                    });
+
+                if (profileError) {
+                    console.error('Profile creation error:', profileError.message);
+                    throw new Error(`Error creando perfil: ${profileError.message}`);
+                }
+
+                setUser({
+                    id: data.user.id,
+                    email: data.user.email!,
+                    name: user.name,
+                    username: user.username
+                });
+
+                return true;
+            }
+
+            return false;
+        } catch (error) {
+            console.error('Registration error:', error);
+            return false;
+        }
     }
-    // OJO: si confirmación de email está activa, el user aparece como "unconfirmed"
-    return true;
-  };
 
-  const logout = async () => {
-    await supabase.auth.signOut();
-    setUser(null);
-  };
+     const updateProfile = async (profileData: Partial<User>) => {
+        if (!user?.id) {
+            console.error('No user ID available');
+            return false;
+        }
 
-  const value = useMemo(() => ({ user, login, register, logout }), [user]);
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-};
+        try {
+            const { error } = await supabase
+                .from('profiles')
+                .update({
+                    ...profileData,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', user.id);
 
-export const useAuth = () => useContext(AuthContext);
+            if (error) {
+                console.error('Update profile error:', error.message);
+                throw new Error(error.message);
+            }
+
+            setUser({
+                ...user,
+                ...profileData
+            });
+
+            return true;
+        } catch (error) {
+            console.error('Update profile error:', error);
+            return false;
+        }
+    };
+
+    return <AuthContext.Provider
+        value={{
+            user,
+            login,
+            register,
+            updateProfile
+        }}
+    >
+        {children}
+    </AuthContext.Provider>
+}

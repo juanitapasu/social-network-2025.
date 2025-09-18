@@ -1,25 +1,31 @@
 // app/(main)/profile.tsx
-import { useAuth } from "@/contexts/AuthContext";
+import { AuthContext } from "@/contexts/AuthContext";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import React from "react";
+import React, { useContext } from "react";
 import {
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from "react-native";
 
 const serif = Platform.select({ ios: "Times New Roman", android: "serif" });
 const ui = Platform.select({ ios: "System", android: "sans-serif" });
 
 export default function Profile() {
-  const { user } = useAuth();
+  const { user } = useContext(AuthContext);
 
-  const username = user?.username ?? "you";
-  const fullName = [user?.name, user?.lastName].filter(Boolean).join(" ") || "Tu nombre";
+  const displayName = user?.name || user?.email?.split("@")[0] || "Tu nombre";
+  const username = user?.username || user?.email?.split("@")[0] || "usuario";
+  const bio = (user as any)?.bio || "Escribe una bio bonita ✨";
+
+  // Si manejas stats en el user, úsalos. Si no, caen a 0.
+  const postsCount = (user as any)?.posts_count ?? 0;
+  const followersCount = (user as any)?.followers_count ?? 0;
+  const followingCount = (user as any)?.following_count ?? 0;
 
   return (
     <View style={s.container}>
@@ -53,24 +59,25 @@ export default function Profile() {
 
             {/* stats */}
             <View style={s.statsRow}>
-              <Stat n="128" label="Publicaciones" />
-              <Stat n="2.4k" label="Vibers" />
-              <Stat n="214" label="Likes" />
+              <Stat n={String(postsCount)} label="Publicaciones" />
+              <Stat n={String(followersCount)} label="Vibers" />
+              <Stat n={String(followingCount)} label="Siguiendo" />
             </View>
           </View>
 
-          <Text style={s.name}>{fullName}</Text>
-          <Text style={s.bio}>Espacios de calma • Lecturas lentas • Respiración consciente</Text>
+          <Text style={s.name}>{displayName}</Text>
+          <Text style={s.bio}>{bio}</Text>
           <Text style={s.link}>vibely.app/{username}</Text>
 
           <View style={s.actionsRow}>
             <TouchableOpacity
               style={[s.btn, s.btnPrimary]}
-              onPress={() => router.push("/(main)/updateProfile")} // 👈 a la pantalla de edición
+              onPress={() => router.push("/(main)/profile/edit")}
+              activeOpacity={0.9}
             >
               <Text style={s.btnPrimaryTxt}>Editar perfil</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={[s.btn, s.btnGhost]}>
+            <TouchableOpacity style={[s.btn, s.btnGhost]} onPress={() => console.log("Share profile")}>
               <Ionicons name="share-social-outline" size={18} color="#3B2357" />
             </TouchableOpacity>
           </View>
@@ -83,7 +90,7 @@ export default function Profile() {
           <Tab icon="bookmark-outline" text="Saved" />
         </View>
 
-        {/* PUNTOS DE LECTURA */}
+        {/* PUNTOS DE LECTURA (demo) */}
         <Section title="Puntos de lectura">
           {[
             { title: "Cómo leer más despacio y recordar mejor", meta: "Ensayo breve · 6 min" },
@@ -101,7 +108,7 @@ export default function Profile() {
           ))}
         </Section>
 
-        {/* ZONA DE MEDITACIÓN */}
+        {/* ZONA DE MEDITACIÓN (demo) */}
         <Section title="Zona de meditación">
           <View style={s.meditGrid}>
             <MeditCard icon="leaf-outline" title="Respira 2 min" subtitle="4-2-6" />
@@ -110,7 +117,7 @@ export default function Profile() {
           </View>
         </Section>
 
-        {/* FRASES BONITAS */}
+        {/* FRASES (demo) */}
         <Section title="Frases bonitas">
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
             {[
@@ -126,7 +133,7 @@ export default function Profile() {
           </ScrollView>
         </Section>
 
-        {/* GRID DE POSTS (placeholder) */}
+        {/* GRID POSTS (placeholder) */}
         <Section title="Tus publicaciones">
           <View style={s.grid}>
             {Array.from({ length: 9 }).map((_, i) => (

@@ -11,7 +11,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import Svg, { Path } from "react-native-svg"; // ondas
+import Svg, { Path } from "react-native-svg";
 
 export default function Login() {
   const { login } = useContext(AuthContext);
@@ -24,22 +24,25 @@ export default function Login() {
       Alert.alert("Error", "Ingresa correo y contraseña");
       return;
     }
-    setLoading(true);
-    const ok = await login(email.trim(), password);
-    setLoading(false);
-    if (!ok) {
-      Alert.alert("Error", "Credenciales inválidas");
-      return;
+    try {
+      setLoading(true);
+      const ok = await login(email.trim(), password);
+      if (!ok) {
+        Alert.alert("Error", "Credenciales inválidas");
+        return;
+      }
+      router.replace("/(main)/home");
+    } finally {
+      setLoading(false);
     }
-    router.replace("/(main)/home");
   };
 
   return (
     <View style={styles.container}>
-      {/* ONDAS DE FONDO (no tocar) */}
+      {/* ONDAS DE FONDO */}
       <Waves />
 
-      {/* BURBUJAS (decoración, detrás de la card) */}
+      {/* BURBUJAS DECORATIVAS */}
       <View pointerEvents="none" style={[styles.bubbleXL, { top: -100, left: -100, backgroundColor: "#FFD6E7" }]} />
       <View pointerEvents="none" style={[styles.bubbleXL, { top: -120, right: -120, backgroundColor: "#C9F7F0" }]} />
       <View pointerEvents="none" style={[styles.bubbleLG, { bottom: 400, left: -70, backgroundColor: "#E9D8FF" }]} />
@@ -62,7 +65,7 @@ export default function Login() {
         <Text style={styles.tagline}>Todos entendemos la vibra ✨</Text>
       </View>
 
-      {/* TARJETA LOGIN */}
+      {/* CARD LOGIN */}
       <View style={styles.card}>
         <Text style={styles.title}>Iniciar sesión</Text>
 
@@ -85,19 +88,23 @@ export default function Login() {
           onChangeText={setPassword}
         />
 
-        {/* VISUAL IGUAL: mismo botón y estilos */}
-        <TouchableOpacity style={[styles.button, loading && { opacity: 0.7 }]} onPress={handleLogin} disabled={loading}>
+        <TouchableOpacity
+          style={[styles.button, loading && { opacity: 0.7 }]}
+          onPress={handleLogin}
+          disabled={loading}
+          activeOpacity={0.9}
+        >
           <Text style={styles.buttonText}>{loading ? "Entrando..." : "Iniciar Sesión"}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           style={styles.button}
           onPress={() => router.push("/(auth)/register")}
+          activeOpacity={0.9}
         >
           <Text style={styles.buttonText}>Registrarme</Text>
         </TouchableOpacity>
 
-        {/* Link olvidaste tu contraseña (igual que antes) */}
         <TouchableOpacity
           onPress={() => Alert.alert("Recuperar contraseña", "Aquí va tu flujo de recuperación.")}
           accessibilityRole="button"
@@ -125,7 +132,7 @@ function VibraMiniLogo() {
   );
 }
 
-/** Ondas SVG (igual que antes) */
+/** Ondas SVG */
 function Waves() {
   return (
     <View style={styles.wavesWrap}>
@@ -165,9 +172,13 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingHorizontal: 24,
   },
+
+  // Marca
   brandWrap: { alignItems: "center", marginBottom: 18, marginTop: 30 },
   brand: { fontSize: 36, fontWeight: "800", color: "#3B2357", letterSpacing: 0.5, marginTop: 6 },
   tagline: { fontSize: 14, color: "#4B3E5E", marginTop: 2, opacity: 0.9 },
+
+  // Card
   card: {
     width: "100%",
     maxWidth: 420,
@@ -181,6 +192,7 @@ const styles = StyleSheet.create({
     }),
   },
   title: { fontSize: 22, fontWeight: "700", color: "#2A1E3F", marginBottom: 10 },
+
   input: {
     width: "100%",
     height: 50,
@@ -191,6 +203,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
     backgroundColor: "#FBF8FF",
   },
+
   button: {
     marginTop: 16,
     height: 50,
@@ -200,24 +213,55 @@ const styles = StyleSheet.create({
     backgroundColor: "#FF7AAE",
   },
   buttonText: { color: "#FFF", fontSize: 16, fontWeight: "800" },
+
   forgotWrap: { marginTop: 12, alignItems: "center" },
   forgotText: { fontSize: 12, color: "#6B4A8E", textDecorationLine: "underline" },
-  wavesWrap: { position: "absolute", left: 0, right: 0, bottom: 0, height: 220, overflow: "hidden", zIndex: 0 },
-  bubbleXL: { position: "absolute", width: 320, height: 320, borderRadius: 160, opacity: 0.4, zIndex: 0 },
-  bubbleLG: { position: "absolute", width: 260, height: 260, borderRadius: 130, opacity: 0.4, zIndex: 0 },
+
+  // Ondas
+  wavesWrap: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 220,
+    overflow: "hidden",
+    zIndex: 0,
+  },
+
+  // Burbujas
+  bubbleXL: {
+    position: "absolute",
+    width: 320,
+    height: 320,
+    borderRadius: 160,
+    opacity: 0.4,
+    zIndex: 0,
+  },
+  bubbleLG: {
+    position: "absolute",
+    width: 260,
+    height: 260,
+    borderRadius: 130,
+    opacity: 0.4,
+    zIndex: 0,
+  },
+
   footer: { position: "absolute", bottom: 18, color: "#7A6C8F", fontSize: 12 },
 });
 
+/* Logo */
 const logoStyles = StyleSheet.create({
   row: { flexDirection: "row", alignItems: "flex-end", gap: 8, marginTop: 4 },
   bar: { width: 16, borderRadius: 10 },
 });
 
+/* Nubes */
 const cloudStyles = StyleSheet.create({
   container: { position: "absolute", width: 140, height: 60, zIndex: 1 },
   ball: { backgroundColor: "#FFFFFF", position: "absolute" },
 });
 
+/* Estrellas */
 const starStyles = StyleSheet.create({
   star: {
     position: "absolute",
