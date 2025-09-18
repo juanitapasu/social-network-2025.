@@ -1,5 +1,7 @@
-import { Link, router } from "expo-router";
-import React from "react";
+// app/(auth)/login.tsx
+import { AuthContext } from "@/contexts/AuthContext";
+import { router } from "expo-router";
+import React, { useContext, useState } from "react";
 import {
   Alert,
   Platform,
@@ -12,34 +14,42 @@ import {
 import Svg, { Path } from "react-native-svg"; // ondas
 
 export default function Login() {
+  const { login } = useContext(AuthContext);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleLogin = async () => {
+    if (!email.trim() || !password.trim()) {
+      Alert.alert("Error", "Ingresa correo y contraseña");
+      return;
+    }
+    setLoading(true);
+    const ok = await login(email.trim(), password);
+    setLoading(false);
+    if (!ok) {
+      Alert.alert("Error", "Credenciales inválidas");
+      return;
+    }
+    router.replace("/(main)/home");
+  };
+
   return (
     <View style={styles.container}>
       {/* ONDAS DE FONDO (no tocar) */}
       <Waves />
 
-      {/* BURBUJAS GRANDES EN ESQUINAS (decoración, detrás de la card) */}
-      <View
-        pointerEvents="none"
-        style={[styles.bubbleXL, { top: -100, left: -100, backgroundColor: "#FFD6E7" }]}
-      />
-      <View
-        pointerEvents="none"
-        style={[styles.bubbleXL, { top: -120, right: -120, backgroundColor: "#C9F7F0" }]}
-      />
-      <View
-        pointerEvents="none"
-        style={[styles.bubbleLG, { bottom: 400, left: -70, backgroundColor: "#E9D8FF" }]}
-      />
-      <View
-        pointerEvents="none"
-        style={[styles.bubbleLG, { bottom: 400, right: -60, backgroundColor: "#C9F7F0" }]}
-      />
+      {/* BURBUJAS (decoración, detrás de la card) */}
+      <View pointerEvents="none" style={[styles.bubbleXL, { top: -100, left: -100, backgroundColor: "#FFD6E7" }]} />
+      <View pointerEvents="none" style={[styles.bubbleXL, { top: -120, right: -120, backgroundColor: "#C9F7F0" }]} />
+      <View pointerEvents="none" style={[styles.bubbleLG, { bottom: 400, left: -70, backgroundColor: "#E9D8FF" }]} />
+      <View pointerEvents="none" style={[styles.bubbleLG, { bottom: 400, right: -60, backgroundColor: "#C9F7F0" }]} />
 
-      {/* NUBES (decoración) */}
+      {/* NUBES */}
       <Cloud style={{ top: 80, left: 40, opacity: 0.9 }} scale={1} />
       <Cloud style={{ top: 150, right: 50, opacity: 0.85 }} scale={0.85} />
 
-      {/* ESTRELLITAS (más cantidad) */}
+      {/* ESTRELLITAS */}
       <Star x={28} y={200} /><Star x={70} y={240} /><Star x={110} y={210} />
       <Star x={160} y={190} /><Star x={210} y={220} /><Star x={260} y={200} />
       <Star x={310} y={235} /><Star x={340} y={260} />
@@ -62,6 +72,8 @@ export default function Login() {
           placeholderTextColor="#8E8E93"
           keyboardType="email-address"
           autoCapitalize="none"
+          value={email}
+          onChangeText={setEmail}
         />
 
         <TextInput
@@ -69,36 +81,30 @@ export default function Login() {
           placeholder="Contraseña"
           placeholderTextColor="#8E8E93"
           secureTextEntry
+          value={password}
+          onChangeText={setPassword}
         />
 
-        {/* ⬇️ ESTA SECCIÓN QUEDA INTACTA ⬇️ */}
-        <Link href="/(main)/home" asChild>
-          <TouchableOpacity style={styles.button}>
-            <Text style={styles.buttonText}>Iniciar Sesión</Text>
-          </TouchableOpacity>
-        </Link>
-   
+        {/* VISUAL IGUAL: mismo botón y estilos */}
+        <TouchableOpacity style={[styles.button, loading && { opacity: 0.7 }]} onPress={handleLogin} disabled={loading}>
+          <Text style={styles.buttonText}>{loading ? "Entrando..." : "Iniciar Sesión"}</Text>
+        </TouchableOpacity>
 
-     <TouchableOpacity
-    style={styles.button}
-      onPress={() => router.push("/(auth)/register")}
-        >
-  <Text style={styles.buttonText}>Registrarme</Text>
-</TouchableOpacity>
-
-
-
-        {/* Link olvidaste tu contraseña */}
         <TouchableOpacity
-          onPress={() =>
-            Alert.alert("Recuperar contraseña", "Aquí va tu flujo de recuperación.")
-          }
+          style={styles.button}
+          onPress={() => router.push("/(auth)/register")}
+        >
+          <Text style={styles.buttonText}>Registrarme</Text>
+        </TouchableOpacity>
+
+        {/* Link olvidaste tu contraseña (igual que antes) */}
+        <TouchableOpacity
+          onPress={() => Alert.alert("Recuperar contraseña", "Aquí va tu flujo de recuperación.")}
           accessibilityRole="button"
           style={styles.forgotWrap}
         >
           <Text style={styles.forgotText}>¿Olvidaste tu contraseña?</Text>
         </TouchableOpacity>
-        {/* ⬆️ ESTA SECCIÓN QUEDA INTACTA ⬆️ */}
       </View>
 
       {/* FOOTER */}
@@ -124,18 +130,9 @@ function Waves() {
   return (
     <View style={styles.wavesWrap}>
       <Svg width="100%" height="100%" viewBox="0 0 375 220" preserveAspectRatio="none">
-        <Path
-          d="M0,80 C60,110 120,50 180,80 C240,110 300,50 375,80 L375,220 L0,220 Z"
-          fill="#FFE38D"
-        />
-        <Path
-          d="M0,130 C60,160 120,100 180,130 C240,160 300,100 375,130 L375,220 L0,220 Z"
-          fill="#FFC0C9"
-        />
-        <Path
-          d="M0,180 C60,210 120,150 180,180 C240,210 300,150 375,180 L375,220 L0,220 Z"
-          fill="#FF9EB3"
-        />
+        <Path d="M0,80 C60,110 120,50 180,80 C240,110 300,50 375,80 L375,220 L0,220 Z" fill="#FFE38D" />
+        <Path d="M0,130 C60,160 120,100 180,130 C240,160 300,100 375,130 L375,220 L0,220 Z" fill="#FFC0C9" />
+        <Path d="M0,180 C60,210 120,150 180,180 C240,210 300,150 375,180 L375,220 L0,220 Z" fill="#FF9EB3" />
       </Svg>
     </View>
   );
@@ -168,19 +165,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingHorizontal: 24,
   },
-
-  // Marca
   brandWrap: { alignItems: "center", marginBottom: 18, marginTop: 30 },
-  brand: {
-    fontSize: 36,
-    fontWeight: "800",
-    color: "#3B2357",
-    letterSpacing: 0.5,
-    marginTop: 6,
-  },
+  brand: { fontSize: 36, fontWeight: "800", color: "#3B2357", letterSpacing: 0.5, marginTop: 6 },
   tagline: { fontSize: 14, color: "#4B3E5E", marginTop: 2, opacity: 0.9 },
-
-  // Card
   card: {
     width: "100%",
     maxWidth: 420,
@@ -189,17 +176,11 @@ const styles = StyleSheet.create({
     padding: 20,
     marginTop: 16,
     ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOpacity: 0.12,
-        shadowRadius: 16,
-        shadowOffset: { width: 0, height: 10 },
-      },
+      ios: { shadowColor: "#000", shadowOpacity: 0.12, shadowRadius: 16, shadowOffset: { width: 0, height: 10 } },
       android: { elevation: 6 },
     }),
   },
   title: { fontSize: 22, fontWeight: "700", color: "#2A1E3F", marginBottom: 10 },
-
   input: {
     width: "100%",
     height: 50,
@@ -210,7 +191,6 @@ const styles = StyleSheet.create({
     marginTop: 12,
     backgroundColor: "#FBF8FF",
   },
-
   button: {
     marginTop: 16,
     height: 50,
@@ -220,64 +200,24 @@ const styles = StyleSheet.create({
     backgroundColor: "#FF7AAE",
   },
   buttonText: { color: "#FFF", fontSize: 16, fontWeight: "800" },
-
   forgotWrap: { marginTop: 12, alignItems: "center" },
-  forgotText: {
-    fontSize: 12,
-    color: "#6B4A8E",
-    textDecorationLine: "underline",
-  },
-
-  // Ondas
-  wavesWrap: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
-    height: 220,
-    overflow: "hidden",
-    zIndex: 0,
-  },
-
-  // Burbujas
-  bubbleXL: {
-    position: "absolute",
-    width: 320,
-    height: 320,
-    borderRadius: 160,
-    opacity: 0.4,
-    zIndex: 0,
-  },
-  bubbleLG: {
-    position: "absolute",
-    width: 260,
-    height: 260,
-    borderRadius: 130,
-    opacity: 0.4,
-    zIndex: 0,
-  },
-
-  footer: {
-    position: "absolute",
-    bottom: 18,
-    color: "#7A6C8F",
-    fontSize: 12,
-  },
+  forgotText: { fontSize: 12, color: "#6B4A8E", textDecorationLine: "underline" },
+  wavesWrap: { position: "absolute", left: 0, right: 0, bottom: 0, height: 220, overflow: "hidden", zIndex: 0 },
+  bubbleXL: { position: "absolute", width: 320, height: 320, borderRadius: 160, opacity: 0.4, zIndex: 0 },
+  bubbleLG: { position: "absolute", width: 260, height: 260, borderRadius: 130, opacity: 0.4, zIndex: 0 },
+  footer: { position: "absolute", bottom: 18, color: "#7A6C8F", fontSize: 12 },
 });
 
-/* Logo */
 const logoStyles = StyleSheet.create({
   row: { flexDirection: "row", alignItems: "flex-end", gap: 8, marginTop: 4 },
   bar: { width: 16, borderRadius: 10 },
 });
 
-/* Nubes */
 const cloudStyles = StyleSheet.create({
   container: { position: "absolute", width: 140, height: 60, zIndex: 1 },
   ball: { backgroundColor: "#FFFFFF", position: "absolute" },
 });
 
-/* Estrellas */
 const starStyles = StyleSheet.create({
   star: {
     position: "absolute",
@@ -290,4 +230,3 @@ const starStyles = StyleSheet.create({
     zIndex: 1,
   },
 });
-

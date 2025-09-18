@@ -1,19 +1,26 @@
+// app/(main)/profile.tsx
+import { useAuth } from "@/contexts/AuthContext";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React from "react";
 import {
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 
 const serif = Platform.select({ ios: "Times New Roman", android: "serif" });
 const ui = Platform.select({ ios: "System", android: "sans-serif" });
 
 export default function Profile() {
+  const { user } = useAuth();
+
+  const username = user?.username ?? "you";
+  const fullName = [user?.name, user?.lastName].filter(Boolean).join(" ") || "Tu nombre";
+
   return (
     <View style={s.container}>
       {/* HEADER */}
@@ -22,7 +29,7 @@ export default function Profile() {
           <Ionicons name="chevron-back" size={26} color="#3B2357" />
         </TouchableOpacity>
 
-        <Text style={s.headerTitle}>vibely.me/you</Text>
+        <Text style={s.headerTitle}>vibely.me/{username}</Text>
 
         <View style={{ flexDirection: "row", gap: 10 }}>
           <TouchableOpacity style={s.headerIcon} onPress={() => router.push("/(main)/new-post")}>
@@ -44,7 +51,7 @@ export default function Profile() {
               <View style={s.onlineDot} />
             </View>
 
-            {/* stats renombradas */}
+            {/* stats */}
             <View style={s.statsRow}>
               <Stat n="128" label="Publicaciones" />
               <Stat n="2.4k" label="Vibers" />
@@ -52,12 +59,15 @@ export default function Profile() {
             </View>
           </View>
 
-          <Text style={s.name}>Juanita pasu</Text>
+          <Text style={s.name}>{fullName}</Text>
           <Text style={s.bio}>Espacios de calma • Lecturas lentas • Respiración consciente</Text>
-          <Text style={s.link}>vibely.app/you</Text>
+          <Text style={s.link}>vibely.app/{username}</Text>
 
           <View style={s.actionsRow}>
-            <TouchableOpacity style={[s.btn, s.btnPrimary]}>
+            <TouchableOpacity
+              style={[s.btn, s.btnPrimary]}
+              onPress={() => router.push("/(main)/updateProfile")} // 👈 a la pantalla de edición
+            >
               <Text style={s.btnPrimaryTxt}>Editar perfil</Text>
             </TouchableOpacity>
             <TouchableOpacity style={[s.btn, s.btnGhost]}>
@@ -73,21 +83,12 @@ export default function Profile() {
           <Tab icon="bookmark-outline" text="Saved" />
         </View>
 
-        {/* PUNTOS DE LECTURA (lista de notas) */}
+        {/* PUNTOS DE LECTURA */}
         <Section title="Puntos de lectura">
           {[
-            {
-              title: "Cómo leer más despacio y recordar mejor",
-              meta: "Ensayo breve · 6 min",
-            },
-            {
-              title: "Micro-pausas de 40s: lo que dice la evidencia",
-              meta: "Notas · 4 min",
-            },
-            {
-              title: "Respirar 4-2-6: guía para empezar hoy",
-              meta: "Guía práctica · 5 min",
-            },
+            { title: "Cómo leer más despacio y recordar mejor", meta: "Ensayo breve · 6 min" },
+            { title: "Micro-pausas de 40s: lo que dice la evidencia", meta: "Notas · 4 min" },
+            { title: "Respirar 4-2-6: guía para empezar hoy", meta: "Guía práctica · 5 min" },
           ].map((it, i) => (
             <TouchableOpacity key={i} style={s.readItem} activeOpacity={0.8}>
               <View style={s.readBullet} />
@@ -109,7 +110,7 @@ export default function Profile() {
           </View>
         </Section>
 
-        {/* FRASES BONITAS (carrusel) */}
+        {/* FRASES BONITAS */}
         <Section title="Frases bonitas">
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
             {[
@@ -125,7 +126,7 @@ export default function Profile() {
           </ScrollView>
         </Section>
 
-        {/* CUADRÍCULA DE POSTS (placeholders) */}
+        {/* GRID DE POSTS (placeholder) */}
         <Section title="Tus publicaciones">
           <View style={s.grid}>
             {Array.from({ length: 9 }).map((_, i) => (
