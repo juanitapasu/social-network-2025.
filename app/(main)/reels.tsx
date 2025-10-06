@@ -1,107 +1,172 @@
+// app/(tabs)/reels/index.tsx
 import { Ionicons } from "@expo/vector-icons";
-import { router } from "expo-router";
-import React from "react";
+import { VideoView, useVideoPlayer } from "expo-video";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-    Dimensions,
-    ImageBackground,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Dimensions,
+  FlatList,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  View,
+  ViewToken,
 } from "react-native";
 
 const { height, width } = Dimensions.get("window");
+const PAGE = height; // altura de cada reel (pantalla completa)
 
-// Mock de “reels” (solo imágenes)
-const reelsMock = [
+// Links de ejemplo: reemplaza src por tus URLs MP4 (https)
+const reels: Array<{ id: string; user: string; caption: string; src: string }> = [
   {
     id: "1",
-    user: "martí",
+    user: "marti",
     caption: "Una pausa de calma ✨",
-    bg: "https://picsum.photos/id/1003/1080/1920", // vertical
+    src: "https://storage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
   },
   {
     id: "2",
     user: "Lukas",
     caption: "La vibra de hoy 🌿",
-    bg: "https://picsum.photos/id/1018/1080/1920",
+    src: "https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4",
   },
   {
     id: "3",
     user: "Zoe",
     caption: "Escribir y respirar ☕",
-    bg: "https://picsum.photos/id/1021/1080/1920",
+    src: "https://storage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4",
   },
 ];
 
-export default function ReelsMock() {
+type Reel = (typeof reels)[number];
+
+export default function ReelsScreen() {
+  const [activeId, setActiveId] = useState(reels[0]?.id ?? "");
+  const listRef = useRef<FlatList<Reel>>(null);
+
+  // Detecta el item realmente visible (>=95%)
+  const onViewableItemsChanged = useRef(
+    ({ viewableItems }: { viewableItems: ViewToken[] }) => {
+      const firstFull = viewableItems.find((v) => v.isViewable && v.item);
+      if (firstFull?.item?.id) setActiveId(String(firstFull.item.id));
+    }
+  ).current;
+
+  const viewConfig = useMemo(() => ({ itemVisiblePercentThreshold: 95 }), []);
+
+  const keyExtractor = useCallback((item: Reel) => item.id, []);
+
+  const renderItem = useCallback(
+    ({ item }: { item: Reel }) => (
+      <ReelItem reel={item} isActive={item.id === activeId} />
+    ),
+    [activeId]
+  );
+
   return (
     <View style={s.container}>
-      {/* Páginas verticales (mock) */}
-      <ScrollView
+      <FlatList
+        ref={listRef}
+        data={reels}
+        keyExtractor={keyExtractor}
+        renderItem={renderItem}
+        // 🔒 Paging exacto por alto de pantalla
         pagingEnabled
+        snapToInterval={PAGE}
+        snapToAlignment="start"
+        decelerationRate="fast"
+        disableIntervalMomentum
+        overScrollMode="never"          // Android
+        bounces={false}                 // iOS
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 64 }}
-      >
-        {reelsMock.map((item) => (
-          <View key={item.id} style={s.reel}>
-            <ImageBackground
-              source={{ uri: item.bg }}
-              style={s.bg}
-              imageStyle={{ resizeMode: "cover" }}
-            >
-              {/* Gradiente simple con overlay usando un View oscuro */}
-              <View style={s.fade} />
+        getItemLayout={(_, index) => ({
+          length: PAGE,
+          offset: PAGE * index,
+          index,
+        })}
+        viewabilityConfig={viewConfig}
+        onViewableItemsChanged={onViewableItemsChanged}
+        // 🧲 Ajuste final por si quedó “entre páginas”
+        onMomentumScrollEnd={(e) => {
+          const y = e.nativeEvent.contentOffset.y;
+          const index = Math.round(y / PAGE);
+          const exactOffset = index * PAGE;
+          if (Math.abs(y - exactOffset) > 1) {
+            listRef.current?.scrollToOffset({ offset: exactOffset, animated: true });
+          }
+        }}
+      />
+    </View>
+  );
+}
 
-              {/* UI superpuesta */}
-              <View style={s.overlay}>
-                <View style={s.info}>
-                  <Text style={s.user}>@{item.user}</Text>
-                  <Text style={s.caption}>{item.caption}</Text>
-                </View>
+function ReelItem({ reel, isActive }: { reel: Reel; isActive: boolean }) {
+  const [muted, setMuted] = useState(true);
 
-                <View style={s.actions}>
-                  <TouchableOpacity style={s.actionBtn}>
-                    <Ionicons name="heart-outline" size={28} color="#fff" />
-                    <Text style={s.count}>2.4k</Text>
-                  </TouchableOpacity>
+  const player = useVideoPlayer(reel.src, (p) => {
+    p.loop = true;
+    p.muted = true; // inicia silenciado
+    p.play();
+  });
 
-                  <TouchableOpacity style={s.actionBtn}>
-                    <Ionicons name="chatbubble-outline" size={28} color="#fff" />
-                    <Text style={s.count}>128</Text>
-                  </TouchableOpacity>
+  // Controla play/pausa según visibilidad
+  useEffect(() => {
+    if (isActive) {
+      player.play();
+    } else {
+      player.pause();
+    }
+  }, [isActive, player]);
 
-                  <TouchableOpacity style={s.actionBtn}>
-                    <Ionicons name="share-social-outline" size={28} color="#fff" />
-                  </TouchableOpacity>
-                </View>
-              </View>
-            </ImageBackground>
-          </View>
-        ))}
-      </ScrollView>
+  // Sincroniza mute con el player
+  useEffect(() => {
+    player.muted = muted;
+  }, [muted, player]);
 
-      {/* Bottom bar (mock) */}
-      <View style={s.tabbar}>
-        <TouchableOpacity style={s.tabItem} onPress={() => router.push("/(main)/home")}>
-          <Ionicons name="home-outline" size={24} color="#fff" />
-        </TouchableOpacity>
-        <TouchableOpacity style={s.tabItem} onPress={() => router.push("/(main)/search")}>
-          <Ionicons name="search-outline" size={24} color="#fff" />
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[s.tabItem, s.tabAdd]}
-          onPress={() => router.push("/(main)/new-post")}
-        >
-          <Ionicons name="add" size={26} color="#FFF" />
-        </TouchableOpacity>
-        <TouchableOpacity style={s.tabItem} onPress={() => router.push("/(main)/reels")}>
-          <Ionicons name="sparkles-outline" size={24} color="#fff" />
-        </TouchableOpacity>
-        <TouchableOpacity style={s.tabItem} onPress={() => router.push("/(main)/profile")}>
-          <View style={s.avatarDot} />
-        </TouchableOpacity>
+  const toggleMute = () => setMuted((m) => !m);
+
+  return (
+    <View style={s.reel}>
+      <TouchableWithoutFeedback onPress={toggleMute}>
+        <View style={s.fill}>
+          <VideoView
+            style={s.video}
+            player={player}
+            allowsFullscreen
+            allowsPictureInPicture
+            contentFit="cover"
+          />
+        </View>
+      </TouchableWithoutFeedback>
+
+      {/* Overlay UI (usuario, caption, acciones) */}
+      <View style={s.overlay}>
+        <View style={s.info}>
+          <Text style={s.user}>@{reel.user}</Text>
+          <Text style={s.caption}>{reel.caption}</Text>
+        </View>
+
+        <View style={s.actions}>
+          <TouchableOpacity style={s.actionBtn}>
+            <Ionicons name="heart-outline" size={28} color="#fff" />
+            <Text style={s.count}>2.4k</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={s.actionBtn}>
+            <Ionicons name="chatbubble-outline" size={28} color="#fff" />
+            <Text style={s.count}>128</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={s.actionBtn}>
+            <Ionicons name="share-social-outline" size={28} color="#fff" />
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Indicador de mute (tap para alternar) */}
+      <View style={s.muteBadge}>
+        <Ionicons name={muted ? "volume-mute" : "volume-high"} size={18} color="#fff" />
+        <Text style={s.muteText}>{muted ? "Mute" : "Sound"}</Text>
       </View>
     </View>
   );
@@ -110,24 +175,17 @@ export default function ReelsMock() {
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#000" },
 
-  reel: {
-    width,
-    height,
-    backgroundColor: "#000",
-  },
-  bg: {
-    width: "100%",
-    height: "100%",
-    justifyContent: "flex-end",
-  },
-  fade: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.18)",
-  },
+  reel: { width, height: PAGE, backgroundColor: "#000" },
+  fill: { width: "100%", height: "100%" },
+  video: { width: "100%", height: "100%" },
 
   overlay: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
     paddingHorizontal: 16,
-    paddingBottom: 90, // deja espacio para la tabbar
+    paddingBottom: 90, // deja espacio si tienes tabbar
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-end",
@@ -141,7 +199,21 @@ const s = StyleSheet.create({
   actionBtn: { alignItems: "center", gap: 4 },
   count: { color: "#fff", fontSize: 12, opacity: 0.9 },
 
-  // Bottom bar (sobre vídeo)
+  muteBadge: {
+    position: "absolute",
+    top: 20,
+    right: 16,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  muteText: { color: "#fff", fontSize: 12 },
+
+  // (si luego agregas una tabbar flotante)
   tabbar: {
     position: "absolute",
     left: 0,
@@ -153,14 +225,4 @@ const s = StyleSheet.create({
     justifyContent: "space-around",
     alignItems: "center",
   },
-  tabItem: { alignItems: "center", justifyContent: "center", width: 56, height: 56 },
-  tabAdd: {
-    width: 68,
-    height: 40,
-    backgroundColor: "#FF9EB3",
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  avatarDot: { width: 20, height: 20, borderRadius: 10, backgroundColor: "#D9D4E8" },
 });

@@ -128,32 +128,10 @@ Me baja la ansiedad y siento que aprendo de verdad.`}
         </View>
       </ScrollView>
 
-      {/* ====== BOTTOM BAR ====== */}
-      <View style={s.tabbar}>
-        <TouchableOpacity style={s.tabItem} onPress={() => router.push("/(main)/home")}>
-          <Ionicons name="home-outline" size={24} color="#3B2357" />
-        </TouchableOpacity>
-
-        {/* LUPA -> SEARCH */}
-        <TouchableOpacity style={s.tabItem} onPress={() => router.push("/(main)/search")}>
-          <Ionicons name="search-outline" size={24} color="#3B2357" />
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[s.tabItem, s.tabAdd]}
-          onPress={() => router.push("/(main)/new-post")}
-        >
-          <Ionicons name="add" size={26} color="#FFF" />
-        </TouchableOpacity>
-
-        <TouchableOpacity style={s.tabItem} onPress={() => router.push("/(main)/reels")}>
-          <Ionicons name="sparkles-outline" size={24} color="#3B2357" />
-        </TouchableOpacity>
-
-        <TouchableOpacity style={s.tabItem} onPress={() => router.push("/(main)/profile")}>
-          <View style={s.avatarDot} />
-        </TouchableOpacity>
-      </View>
+     
+      
+       
+     
     </SafeAreaView>
   );
 }
@@ -172,7 +150,7 @@ function HeaderBlock() {
 
         {/* Acciones derechas: Mensajes (con badge) + Perfil */}
         <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-          <TouchableOpacity style={s.iconBtn} onPress={() => router.push("/(main)/messages")}>
+          <TouchableOpacity style={s.iconBtn} onPress={() => router.push("/(main)/Chats")}>
             <View>
               <Ionicons name="paper-plane-outline" size={24} color="#3B2357" />
               <View style={s.badge}>
@@ -181,9 +159,7 @@ function HeaderBlock() {
             </View>
           </TouchableOpacity>
 
-          <TouchableOpacity onPress={() => router.push("/(main)/profile")}>
-            <View style={s.avatarSm} />
-          </TouchableOpacity>
+         
         </View>
       </View>
 

@@ -1,92 +1,141 @@
-// app/(main)/edit-profile.tsx
-import { AuthContext } from '@/contexts/AuthContext';
-import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import React, { useContext, useState } from 'react';
+// app/(main)/profile/edit.tsx
+import CameraModal from "@/components/CameraModal";
+import { AuthContext } from "@/contexts/AuthContext";
+import { Ionicons } from "@expo/vector-icons";
+import { Image } from "expo-image";
+import * as ImagePicker from "expo-image-picker";
+import { useRouter } from "expo-router";
+import React, { useContext, useMemo, useState } from "react";
 import {
     Alert,
-    Image,
     Platform,
     ScrollView,
     StyleSheet,
     Text,
     TextInput,
     TouchableOpacity,
-    View
-} from 'react-native';
-import Svg, { Path } from 'react-native-svg';
+    View,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+const toDataUri = (base64?: string | null, mime = "image/jpeg") =>
+  base64 ? `data:${mime};base64,${base64}` : null;
 
 export default function EditProfile() {
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const { user, updateProfile } = useContext(AuthContext);
 
-  const [formData, setFormData] = useState({
-    name: user?.name || '',
-    username: user?.username || '',
-    bio: (user as any)?.bio || '',
+  // ------- estado
+  const [form, setForm] = useState({
+    name: user?.name || "",
+    username: user?.username || "",
+    bio: user?.bio || "",
+    website: user?.website || "",
+    location: user?.location || "",
+    phone: user?.phone || "",
   });
+
+  // guardamos siempre como data-uri base64
+  const [avatar, setAvatar] = useState<string | null>(user?.avatar_url ?? null);
+  const [showCam, setShowCam] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+  const avatarPreview = useMemo(() => {
+    if (avatar) return avatar;
+    const seed =
+      user?.name?.trim() || user?.username?.trim() || "Vibely User";
+    return `https://api.dicebear.com/8.x/initials/svg?seed=${encodeURIComponent(
+      seed
+    )}`;
+  }, [avatar, user?.name, user?.username]);
+
+  const onChange = (k: keyof typeof form, v: string) =>
+    setForm((p) => ({ ...p, [k]: v }));
+
+  // ------- galería (base64)
+  const pickFromGallery = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert("Permiso requerido", "Activa acceso a tu galería.");
+      return;
+    }
+
+    const res = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.9,
+      base64: true,
+    });
+
+    if (!res.canceled) {
+      const asset = res.assets[0];
+      const dataUri = toDataUri(asset.base64);
+      if (dataUri) setAvatar(dataUri);
+    }
   };
 
-  const handleSave = async () => {
-    if (!formData.name.trim()) {
-      Alert.alert('Error', 'El nombre es requerido');
+  // ------- cámara (usa tu ModalCamera → entrega base64)
+  const takePhoto = () => setShowCam(true);
+  const handleCapture = (base64: string) => {
+    const dataUri = toDataUri(base64);
+    if (dataUri) setAvatar(dataUri);
+  };
+
+  const selectImage = () => {
+    Alert.alert("Cambiar foto de perfil", "Selecciona una opción", [
+      { text: "Cámara", onPress: takePhoto },
+      { text: "Galería", onPress: pickFromGallery },
+      { text: "Cancelar", style: "cancel" },
+    ]);
+  };
+
+  const onSave = async () => {
+    if (!form.name.trim()) {
+      Alert.alert("Error", "El nombre es requerido");
       return;
     }
-    if (formData.username && formData.username.length < 3) {
-      Alert.alert('Error', 'El nombre de usuario debe tener al menos 3 caracteres');
+    if (form.username && form.username.length < 3) {
+      Alert.alert("Error", "El nombre de usuario debe tener al menos 3 caracteres");
       return;
     }
+
     setLoading(true);
     try {
-      const success = await updateProfile({
-        name: formData.name.trim(),
-        username: formData.username.trim() || undefined,
-        // si tu backend soporta bio, se guardará; si no, simplemente se ignora
-        ...(formData.bio?.trim() ? { bio: formData.bio.trim() } : {}),
-      } as any);
+      const ok = await updateProfile({
+        name: form.name.trim(),
+        username: form.username.trim() || undefined,
+        bio: form.bio.trim() || undefined,
+        website: form.website.trim() || undefined,
+        location: form.location.trim() || undefined,
+        phone: form.phone.trim() || undefined,
+        // 👇 guardamos data-uri base64
+        avatar_url: avatar || undefined,
+      });
 
-      if (success) {
-        Alert.alert('Éxito', 'Perfil actualizado correctamente', [
-          { text: 'OK', onPress: () => router.back() },
+      if (ok) {
+        Alert.alert("Éxito", "Perfil actualizado correctamente", [
+          { text: "OK", onPress: () => router.back() },
         ]);
       } else {
-        Alert.alert('Error', 'No se pudo actualizar el perfil. Intenta de nuevo.');
+        Alert.alert("Error", "No se pudo actualizar el perfil. Intenta de nuevo.");
       }
-    } catch (error: any) {
-      const errorMessage = error?.message || 'Ocurrió un error inesperado. Intenta de nuevo.';
-      Alert.alert('Error', errorMessage);
+    } catch (e: any) {
+      Alert.alert("Error", e?.message || "Ocurrió un error inesperado.");
     } finally {
       setLoading(false);
     }
   };
 
-  const selectImage = () => {
-    Alert.alert('Cambiar foto de perfil', 'Selecciona una opción', [
-      { text: 'Cámara', onPress: () => console.log('Camera selected') },
-      { text: 'Galería', onPress: () => console.log('Gallery selected') },
-      { text: 'Cancelar', style: 'cancel' },
-    ]);
-  };
-
   return (
-    <View style={s.container}>
-      {/* Fondo Vibely */}
-      <Waves />
-      <View pointerEvents="none" style={[s.bubbleXL, { top: -110, left: -110, backgroundColor: "#FFD6E7" }]} />
-      <View pointerEvents="none" style={[s.bubbleXL, { top: -130, right: -130, backgroundColor: "#C9F7F0" }]} />
-      <View pointerEvents="none" style={[s.bubbleLG, { bottom: 140, left: -80, backgroundColor: "#E9D8FF" }]} />
-      <View pointerEvents="none" style={[s.bubbleLG, { bottom: 180, right: -70, backgroundColor: "#C9F7F0" }]} />
-      <Cloud style={{ top: 70, left: 24, opacity: 0.9 }} scale={0.9} />
-      <Cloud style={{ top: 120, right: 28, opacity: 0.85 }} scale={0.75} />
-      <Star x={22} y={170} /><Star x={70} y={185} /><Star x={120} y={175} />
-      <Star x={220} y={165} /><Star x={280} y={180} /><Star x={330} y={170} />
-
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={s.scrollContent} showsVerticalScrollIndicator={false}>
-        {/* Encabezado */}
+    <View style={[s.root, { paddingTop: Math.max(insets.top, 14) }]}>
+      <ScrollView
+        style={s.scroll}
+        contentContainerStyle={{ paddingBottom: 28 }}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Header */}
         <View style={s.header}>
           <TouchableOpacity style={s.headerIcon} onPress={() => router.back()}>
             <Ionicons name="chevron-back" size={26} color="#3B2357" />
@@ -95,16 +144,15 @@ export default function EditProfile() {
           <View style={{ width: 26 }} />
         </View>
 
-        {/* Sección avatar */}
+        {/* Avatar */}
         <View style={s.avatarSection}>
           <TouchableOpacity onPress={selectImage} style={s.avatarContainer}>
             <Image
-              source={{
-                uri:
-                  (user as any)?.avatar_url ||
-                  'https://via.placeholder.com/100/e1e1e1/666?text=User',
-              }}
+              key={avatarPreview}
+              source={{ uri: avatarPreview }}
               style={s.avatar}
+              contentFit="cover"
+              cachePolicy="none"
             />
             <View style={s.avatarOverlay}>
               <Ionicons name="camera" size={18} color="#FFFFFF" />
@@ -115,13 +163,13 @@ export default function EditProfile() {
           </TouchableOpacity>
         </View>
 
-        {/* Card de edición */}
+        {/* Card/Form */}
         <View style={s.card}>
           <Field label="Nombre">
             <TextInput
               style={s.input}
-              value={formData.name}
-              onChangeText={(value) => handleInputChange('name', value)}
+              value={form.name}
+              onChangeText={(v) => onChange("name", v)}
               placeholder="Tu nombre completo"
               placeholderTextColor="#8E8E93"
             />
@@ -130,48 +178,104 @@ export default function EditProfile() {
           <Field label="Usuario">
             <TextInput
               style={s.input}
-              value={formData.username}
-              onChangeText={(value) => handleInputChange('username', value)}
+              value={form.username}
+              onChangeText={(v) => onChange("username", v)}
               placeholder="@nombredeusuario"
               placeholderTextColor="#8E8E93"
               autoCapitalize="none"
               maxLength={30}
             />
+            <Text style={s.helpText}>Solo letras, números y guiones bajos</Text>
           </Field>
 
           <Field label="Biografía">
             <TextInput
               style={[s.input, s.bioInput]}
-              value={formData.bio}
-              onChangeText={(value) => handleInputChange('bio', value)}
-              placeholder="Cuéntanos sobre ti..."
+              value={form.bio}
+              onChangeText={(v) => onChange("bio", v)}
+              placeholder="Cuéntanos sobre ti…"
               placeholderTextColor="#8E8E93"
               multiline
               numberOfLines={4}
               maxLength={150}
               textAlignVertical="top"
             />
-            <Text style={s.characterCount}>{formData.bio.length}/150</Text>
+            <Text style={s.characterCount}>{form.bio.length}/150</Text>
+          </Field>
+
+          <Field label="Sitio web">
+            <TextInput
+              style={s.input}
+              value={form.website}
+              onChangeText={(v) => onChange("website", v)}
+              placeholder="https://tusitio.com"
+              placeholderTextColor="#8E8E93"
+              autoCapitalize="none"
+              keyboardType="url"
+              maxLength={100}
+            />
+          </Field>
+
+          <Field label="Ubicación">
+            <TextInput
+              style={s.input}
+              value={form.location}
+              onChangeText={(v) => onChange("location", v)}
+              placeholder="Ciudad, País"
+              placeholderTextColor="#8E8E93"
+              maxLength={50}
+            />
+          </Field>
+
+          <Field label="Teléfono">
+            <TextInput
+              style={s.input}
+              value={form.phone}
+              onChangeText={(v) => onChange("phone", v)}
+              placeholder="+1 234 567 8900"
+              placeholderTextColor="#8E8E93"
+              keyboardType="phone-pad"
+              maxLength={20}
+            />
           </Field>
 
           <TouchableOpacity
-            onPress={handleSave}
+            onPress={onSave}
             style={[s.button, loading && { opacity: 0.6 }]}
             disabled={loading}
             activeOpacity={0.9}
           >
-            <Text style={s.buttonText}>{loading ? 'Guardando...' : 'Guardar'}</Text>
+            <Text style={s.buttonText}>
+              {loading ? "Guardando..." : "Guardar"}
+            </Text>
           </TouchableOpacity>
         </View>
 
         <Text style={s.footer}>© 2025 Vibely</Text>
       </ScrollView>
+
+      {/* Modal cámara (base64) */}
+      {showCam && (
+        <CameraModal
+          onClose={() => setShowCam(false)}
+          onCapture={(b64) => {
+            handleCapture(b64);
+            setShowCam(false);
+          }}
+        />
+      )}
     </View>
   );
 }
 
-/* ======= UI Vibely helpers ======= */
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+/* ---------- UI helpers ---------- */
+function Field({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
   return (
     <View style={{ marginBottom: 14 }}>
       <Text style={s.label}>{label}</Text>
@@ -180,63 +284,15 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-function Waves() {
-  return (
-    <View style={s.wavesWrap} pointerEvents="none">
-      <Svg width="100%" height="100%" viewBox="0 0 375 220" preserveAspectRatio="none">
-        <Path d="M0,80 C60,110 120,50 180,80 C240,110 300,50 375,80 L375,220 L0,220 Z" fill="#FFE38D" />
-        <Path d="M0,130 C60,160 120,100 180,130 C240,160 300,100 375,130 L375,220 L0,220 Z" fill="#FFC0C9" />
-        <Path d="M0,180 C60,210 120,150 180,180 C240,210 300,150 375,180 L375,220 L0,220 Z" fill="#FF9EB3" />
-      </Svg>
-    </View>
-  );
-}
-
-function Cloud({ style, scale = 1 }: { style?: any; scale?: number }) {
-  const base = 22 * scale;
-  return (
-    <View style={[cloudStyles.container, style]}>
-      <View style={[cloudStyles.ball, { width: base * 2.2, height: base * 1.2, borderRadius: base }]} />
-      <View style={[cloudStyles.ball, { left: base * 1.1, top: -base * 0.6, width: base * 1.8, height: base * 1.4, borderRadius: base }]} />
-      <View style={[cloudStyles.ball, { left: base * 0.2, top: -base * 0.4, width: base * 1.5, height: base * 1.2, borderRadius: base }]} />
-    </View>
-  );
-}
-
-function Star({ x, y }: { x: number; y: number }) {
-  return <View pointerEvents="none" style={[starStyles.star, { left: x, top: y }]} />;
-}
-
-/* ======= Estilos Vibely ======= */
+/* ---------- Estilos Vibely ---------- */
 const CARD_BG = "#FFFFFF";
 const s = StyleSheet.create({
-  container: {
+  root: {
     flex: 1,
     backgroundColor: "#F7ECFF",
-    paddingTop: Platform.select({ ios: 40, android: 24 }),
   },
-  scrollContent: {
-    paddingHorizontal: 20,
-    paddingBottom: 160,
-  },
-  wavesWrap: {
-    position: "absolute",
-    left: 0, right: 0, bottom: 0,
-    height: 220, zIndex: 0,
-  },
-  bubbleXL: {
-    position: "absolute",
-    width: 340, height: 340, borderRadius: 170,
-    opacity: 0.38, zIndex: 0,
-  },
-  bubbleLG: {
-    position: "absolute",
-    width: 280, height: 280, borderRadius: 140,
-    opacity: 0.36, zIndex: 0,
-  },
-
+  scroll: { flex: 1, paddingHorizontal: 20 },
   header: {
-    paddingHorizontal: 6,
     paddingBottom: 8,
     flexDirection: "row",
     justifyContent: "space-between",
@@ -246,11 +302,11 @@ const s = StyleSheet.create({
   headerTitle: { fontSize: 18, fontWeight: "900", color: "#3B2357" },
 
   avatarSection: {
-    alignItems: 'center',
+    alignItems: "center",
     paddingVertical: 18,
   },
   avatarContainer: {
-    position: 'relative',
+    position: "relative",
     marginBottom: 10,
   },
   avatar: {
@@ -260,23 +316,23 @@ const s = StyleSheet.create({
     backgroundColor: "#EDE9F7",
   },
   avatarOverlay: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 2,
     right: 2,
     backgroundColor: "#3B2357",
     borderRadius: 14,
     width: 28,
     height: 28,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     borderWidth: 2,
     borderColor: "#FFFFFF",
   },
   changePhotoText: {
     fontSize: 14,
     color: "#6F46FF",
-    fontWeight: '700',
-    textDecorationLine: 'underline',
+    fontWeight: "700",
+    textDecorationLine: "underline",
   },
 
   card: {
@@ -303,13 +359,12 @@ const s = StyleSheet.create({
     borderRadius: 14,
     paddingHorizontal: 14,
     backgroundColor: "#FBF8FF",
+    color: "#2A2141",
   },
-  bioInput: {
-    height: 100,
-    paddingTop: 10,
-  },
+  helpText: { fontSize: 11, color: "#8C7FA6", marginTop: 4 },
+  bioInput: { height: 100, paddingTop: 10 },
   characterCount: {
-    textAlign: 'right',
+    textAlign: "right",
     color: "#8C7FA6",
     fontSize: 12,
     marginTop: 4,
@@ -330,20 +385,5 @@ const s = StyleSheet.create({
     textAlign: "center",
     color: "#7A6C8F",
     fontSize: 12,
-  },
-});
-
-const cloudStyles = StyleSheet.create({
-  container: { position: "absolute", width: 140, height: 60, zIndex: 2 },
-  ball: { backgroundColor: "#FFFFFF", position: "absolute" },
-});
-
-const starStyles = StyleSheet.create({
-  star: {
-    position: "absolute",
-    width: 8, height: 8,
-    backgroundColor: "#FFFFFF",
-    transform: [{ rotate: "45deg" }],
-    borderRadius: 1, opacity: 0.9, zIndex: 2,
   },
 });

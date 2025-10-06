@@ -1,385 +1,445 @@
-// app/(main)/profile.tsx
+// app/(main)/profile/index.tsx
 import { AuthContext } from "@/contexts/AuthContext";
 import { Ionicons } from "@expo/vector-icons";
-import { router } from "expo-router";
-import React, { useContext } from "react";
+import { Image } from "expo-image";
+import { useRouter } from "expo-router";
+import React, { useContext, useMemo } from "react";
 import {
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-const serif = Platform.select({ ios: "Times New Roman", android: "serif" });
-const ui = Platform.select({ ios: "System", android: "sans-serif" });
-
-export default function Profile() {
+export default function ProfileIndex() {
+  const insets = useSafeAreaInsets();
+  const router = useRouter();
   const { user } = useContext(AuthContext);
 
-  const displayName = user?.name || user?.email?.split("@")[0] || "Tu nombre";
-  const username = user?.username || user?.email?.split("@")[0] || "usuario";
-  const bio = (user as any)?.bio || "Escribe una bio bonita ✨";
-
-  // Si manejas stats en el user, úsalos. Si no, caen a 0.
-  const postsCount = (user as any)?.posts_count ?? 0;
-  const followersCount = (user as any)?.followers_count ?? 0;
-  const followingCount = (user as any)?.following_count ?? 0;
+  // http(s) o data:image/...;base64; si no hay, fallback con iniciales
+  const avatarUri = useMemo(() => {
+    if (user?.avatar_url) return user.avatar_url;
+    const seed =
+      user?.name?.trim() ||
+      user?.username?.trim() ||
+      "Vibely User";
+    return `https://api.dicebear.com/8.x/initials/svg?seed=${encodeURIComponent(
+      seed
+    )}`;
+  }, [user?.avatar_url, user?.name, user?.username]);
 
   return (
-    <View style={s.container}>
-      {/* HEADER */}
-      <View style={s.header}>
-        <TouchableOpacity style={s.headerIcon} onPress={() => router.push("/(main)/home")}>
-          <Ionicons name="chevron-back" size={26} color="#3B2357" />
+    <ScrollView
+      style={[s.container, { paddingTop: Math.max(insets.top, 14) }]}
+      contentContainerStyle={{ paddingBottom: 28 }}
+      showsVerticalScrollIndicator={false}
+    >
+      {/* Top link */}
+      <View style={s.topbar}>
+        <Text numberOfLines={1} style={s.topLink}>
+          vibely.me/{user?.username || "user"}
+        </Text>
+        <TouchableOpacity
+          onPress={() => router.push("/(main)/profile/edit")}
+          style={s.topIcon}
+        >
+          <Ionicons name="menu-outline" size={20} color="#7A6C8F" />
         </TouchableOpacity>
-
-        <Text style={s.headerTitle}>vibely.me/{username}</Text>
-
-        <View style={{ flexDirection: "row", gap: 10 }}>
-          <TouchableOpacity style={s.headerIcon} onPress={() => router.push("/(main)/new-post")}>
-            <Ionicons name="add-circle-outline" size={24} color="#3B2357" />
-          </TouchableOpacity>
-          <TouchableOpacity style={s.headerIcon} onPress={() => console.log("Settings")}>
-            <Ionicons name="menu-outline" size={26} color="#3B2357" />
-          </TouchableOpacity>
-        </View>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
-        {/* CABECERA PERFIL */}
-        <View style={s.topCard}>
-          <View style={s.row}>
-            {/* avatar + online */}
-            <View style={s.avatarWrap}>
-              <View style={s.avatar} />
-              <View style={s.onlineDot} />
-            </View>
+      {/* Header con avatar + datos + acciones */}
+      <View style={s.headerRow}>
+        <Image
+          key={avatarUri}           // fuerza remount cuando cambia
+          source={{ uri: avatarUri }}
+          style={s.avatar}
+          contentFit="cover"
+          cachePolicy="none"        // sin caché → se ve el cambio inmediato
+        />
 
-            {/* stats */}
-            <View style={s.statsRow}>
-              <Stat n={String(postsCount)} label="Publicaciones" />
-              <Stat n={String(followersCount)} label="Vibers" />
-              <Stat n={String(followingCount)} label="Siguiendo" />
-            </View>
-          </View>
+        <View style={s.nameBlock}>
+          <Text numberOfLines={1} style={s.name}>
+            {user?.name || "Usuario"}
+          </Text>
 
-          <Text style={s.name}>{displayName}</Text>
-          <Text style={s.bio}>{bio}</Text>
-          <Text style={s.link}>vibely.app/{username}</Text>
+          {!!user?.username && (
+            <Text numberOfLines={1} style={s.username}>
+              @{user.username}
+            </Text>
+          )}
 
+          {/* Bio visible */}
+          {!!user?.bio && (
+            <Text numberOfLines={2} style={s.bio}>
+              {user.bio}
+            </Text>
+          )}
+
+          {/* Acciones: Editar (rosa) + icono de link */}
           <View style={s.actionsRow}>
             <TouchableOpacity
-              style={[s.btn, s.btnPrimary]}
               onPress={() => router.push("/(main)/profile/edit")}
+              style={s.editBadge}
               activeOpacity={0.9}
             >
-              <Text style={s.btnPrimaryTxt}>Editar perfil</Text>
+              <Ionicons name="create-outline" size={16} color="#fff" />
+              <Text style={s.editBadgeText}>Editar perfil</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={[s.btn, s.btnGhost]} onPress={() => console.log("Share profile")}>
-              <Ionicons name="share-social-outline" size={18} color="#3B2357" />
+
+            <TouchableOpacity style={s.secondaryIcon} activeOpacity={0.9}>
+              <Ionicons name="link-outline" size={16} color="#6F46FF" />
             </TouchableOpacity>
           </View>
         </View>
+      </View>
 
-        {/* TABS */}
-        <View style={s.tabs}>
-          <Tab icon="grid-outline" text="Posts" active />
-          <Tab icon="book-outline" text="Notes" />
-          <Tab icon="bookmark-outline" text="Saved" />
+      {/* Tabs (Posts / Notes / Saved) */}
+      <View style={s.tabsRow}>
+        <Tab label="Posts" active />
+        <Tab label="Notes" />
+        <Tab label="Saved" />
+      </View>
+
+      {/* Sección: Puntos de lectura */}
+      <SectionTitle title="Puntos de lectura" />
+      <CardList
+        items={[
+          {
+            title: "Cómo leer más despacio y recordar mejor",
+            subtitle: "Ensayo breve • 6 min",
+          },
+          {
+            title: "Micro-pausas de 40s: lo que dice la evidencia",
+            subtitle: "Notas • 4 min",
+          },
+          {
+            title: "Respirar 4-2-6: guía para empezar hoy",
+            subtitle: "Guía práctica • 5 min",
+          },
+        ]}
+      />
+
+      {/* Sección: Zona de meditación (3 tiles) */}
+      <SectionTitle title="Zona de meditación" />
+      <View style={s.meditationRow}>
+        <Tile title="Respira 2 min" subtitle="4-2-6" icon="leaf-outline" />
+        <Tile title="Siesta 10 min" subtitle="body scan" icon="moon-outline" />
+        <Tile title="Focus 5 min" subtitle="visualización" icon="sparkles-outline" />
+      </View>
+
+      {/* Sección: Frases bonitas */}
+      <SectionTitle title="Frases bonitas" />
+      <QuoteCard quote="Hazlo simple, pero significativo." author="Don Draper" />
+    </ScrollView>
+  );
+}
+
+/* ---------- Mini componentes de UI ---------- */
+
+function Tab({ label, active }: { label: string; active?: boolean }) {
+  return (
+    <View style={[s.tab, active ? s.tabActive : null]}>
+      <Ionicons
+        name={
+          label === "Posts"
+            ? "albums-outline"
+            : label === "Notes"
+            ? "document-text-outline"
+            : "bookmark-outline"
+        }
+        size={14}
+        color={active ? "#4B2FA7" : "#7A6C8F"}
+      />
+      <Text style={[s.tabText, active ? s.tabTextActive : null]}>{label}</Text>
+    </View>
+  );
+}
+
+function SectionTitle({ title }: { title: string }) {
+  return <Text style={s.sectionTitle}>{title}</Text>;
+}
+
+function CardList({ items }: { items: { title: string; subtitle: string }[] }) {
+  return (
+    <View style={s.cardList}>
+      {items.map((it, idx) => (
+        <View key={`${it.title}-${idx}`} style={s.card}>
+          <View style={{ flex: 1 }}>
+            <Text numberOfLines={1} style={s.cardTitle}>
+              {it.title}
+            </Text>
+            <Text numberOfLines={1} style={s.cardSubtitle}>
+              {it.subtitle}
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color="#C8BBDC" />
         </View>
+      ))}
+    </View>
+  );
+}
 
-        {/* PUNTOS DE LECTURA (demo) */}
-        <Section title="Puntos de lectura">
-          {[
-            { title: "Cómo leer más despacio y recordar mejor", meta: "Ensayo breve · 6 min" },
-            { title: "Micro-pausas de 40s: lo que dice la evidencia", meta: "Notas · 4 min" },
-            { title: "Respirar 4-2-6: guía para empezar hoy", meta: "Guía práctica · 5 min" },
-          ].map((it, i) => (
-            <TouchableOpacity key={i} style={s.readItem} activeOpacity={0.8}>
-              <View style={s.readBullet} />
-              <View style={{ flex: 1 }}>
-                <Text style={s.readTitle}>{it.title}</Text>
-                <Text style={s.readMeta}>{it.meta}</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color="#8C7FA6" />
-            </TouchableOpacity>
-          ))}
-        </Section>
-
-        {/* ZONA DE MEDITACIÓN (demo) */}
-        <Section title="Zona de meditación">
-          <View style={s.meditGrid}>
-            <MeditCard icon="leaf-outline" title="Respira 2 min" subtitle="4-2-6" />
-            <MeditCard icon="moon-outline" title="Siesta 10 min" subtitle="body scan" />
-            <MeditCard icon="sparkles-outline" title="Focus 5 min" subtitle="visualización" />
-          </View>
-        </Section>
-
-        {/* FRASES (demo) */}
-        <Section title="Frases bonitas">
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
-            {[
-              "Lee a la velocidad de tu pensamiento.",
-              "Respira como si el mundo fuese ancho.",
-              "Lo que no se nombra se siente más pesado.",
-              "Haz espacio para una idea a la vez.",
-            ].map((q, i) => (
-              <View key={i} style={s.quoteCard}>
-                <Text style={s.quoteText}>"{q}"</Text>
-              </View>
-            ))}
-          </ScrollView>
-        </Section>
-
-        {/* GRID POSTS (placeholder) */}
-        <Section title="Tus publicaciones">
-          <View style={s.grid}>
-            {Array.from({ length: 9 }).map((_, i) => (
-              <View key={i} style={s.gridItem}>
-                <View style={s.gridMedia} />
-              </View>
-            ))}
-          </View>
-        </Section>
-      </ScrollView>
-
-      {/* BOTTOM BAR */}
-      <View style={s.tabbar}>
-        <TouchableOpacity style={s.tabItem} onPress={() => router.push("/(main)/home")}>
-          <Ionicons name="home-outline" size={26} color="#3B2357" />
-        </TouchableOpacity>
-        <TouchableOpacity style={s.tabItem} onPress={() => router.push("/(main)/search")}>
-          <Ionicons name="search-outline" size={26} color="#3B2357" />
-        </TouchableOpacity>
-        <TouchableOpacity style={[s.tabItem, s.tabAdd]} onPress={() => router.push("/(main)/new-post")}>
-          <Ionicons name="add" size={28} color="#FFF" />
-        </TouchableOpacity>
-        <TouchableOpacity style={s.tabItem} onPress={() => router.push("/(main)/reels")}>
-          <Ionicons name="sparkles-outline" size={26} color="#3B2357" />
-        </TouchableOpacity>
-        <TouchableOpacity style={s.tabItem} onPress={() => router.push("/(main)/profile")}>
-          <View style={s.miniAvatar} />
-        </TouchableOpacity>
+function Tile({
+  title,
+  subtitle,
+  icon,
+}: {
+  title: string;
+  subtitle: string;
+  icon: any;
+}) {
+  return (
+    <View style={s.tile}>
+      <View style={s.tileIconWrap}>
+        <Ionicons name={icon} size={18} color="#6F46FF" />
       </View>
+      <Text numberOfLines={1} style={s.tileTitle}>
+        {title}
+      </Text>
+      <Text numberOfLines={1} style={s.tileSubtitle}>
+        {subtitle}
+      </Text>
     </View>
   );
 }
 
-/* ---------- Subcomponentes ---------- */
-
-function Stat({ n, label }: { n: string; label: string }) {
+function QuoteCard({ quote, author }: { quote: string; author?: string }) {
   return (
-    <View style={{ alignItems: "center", minWidth: 86 }}>
-      <Text style={s.statN}>{n}</Text>
-      <Text style={s.statLabel}>{label}</Text>
+    <View style={s.quoteCard}>
+      <Ionicons name="sparkles-outline" size={18} color="#6F46FF" />
+      <Text style={s.quoteText}>"{quote}"</Text>
+      {!!author && <Text style={s.quoteAuthor}>— {author}</Text>}
     </View>
   );
 }
 
-function Tab({ icon, text, active = false }: { icon: any; text: string; active?: boolean }) {
-  return (
-    <TouchableOpacity style={[s.tabPill, active && s.tabPillActive]}>
-      <Ionicons name={icon} size={16} color={active ? "#3B2357" : "#6B4A8E"} />
-      <Text style={[s.tabPillTxt, active && s.tabPillTxtActive]}>{text}</Text>
-    </TouchableOpacity>
-  );
-}
-
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <View style={{ paddingHorizontal: 14, marginTop: 16 }}>
-      <Text style={s.sectionTitle}>{title}</Text>
-      <View style={s.card}>{children}</View>
-    </View>
-  );
-}
-
-function MeditCard({ icon, title, subtitle }: { icon: any; title: string; subtitle: string }) {
-  return (
-    <TouchableOpacity style={s.meditCard} activeOpacity={0.9}>
-      <View style={s.meditIconWrap}>
-        <Ionicons name={icon} size={20} color="#6F46FF" />
-      </View>
-      <Text style={s.meditTitle}>{title}</Text>
-      <Text style={s.meditSub}>{subtitle}</Text>
-    </TouchableOpacity>
-  );
-}
-
-/* ---------- Estilos ---------- */
+/* ---------- Estilos (visual Vibely) ---------- */
 
 const s = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#FFFFFF",
-    paddingTop: Platform.select({ ios: 46, android: 24 }),
-  },
-
-  /* Header */
-  header: {
-    paddingHorizontal: 14,
-    paddingBottom: 8,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    borderBottomWidth: 0.5,
-    borderBottomColor: "#EFEAF7",
-  },
-  headerIcon: { padding: 6 },
-  headerTitle: { fontFamily: ui, fontSize: 16, fontWeight: "800", color: "#3B2357" },
-
-  /* Top card */
-  topCard: { paddingHorizontal: 14, paddingTop: 14 },
-  row: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  avatarWrap: { position: "relative" },
-  avatar: { width: 78, height: 78, borderRadius: 39, backgroundColor: "#D9D4E8" },
-  onlineDot: {
-    position: "absolute",
-    right: 2,
-    bottom: 2,
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    backgroundColor: "#3CD77E",
-    borderWidth: 2,
-    borderColor: "#fff",
-  },
-
-  statsRow: { flexDirection: "row", gap: 22 },
-  statN: { fontFamily: ui, fontWeight: "900", color: "#3B2357", fontSize: 18 },
-  statLabel: { fontFamily: ui, color: "#8C7FA6", fontSize: 11, textAlign: "center" },
-
-  name: { marginTop: 12, fontFamily: ui, fontWeight: "900", color: "#3B2357", fontSize: 20 },
-  bio: { marginTop: 4, fontFamily: serif, color: "#2F2840", fontSize: 15, lineHeight: 22 },
-  link: { marginTop: 6, fontFamily: ui, color: "#6B4A8E", fontSize: 12 },
-
-  actionsRow: { marginTop: 12, flexDirection: "row", gap: 10 },
-  btn: {
-    height: 40,
     paddingHorizontal: 16,
-    borderRadius: 12,
+  },
+
+  // Barra superior
+  topbar: {
+    flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 6,
+  },
+  topLink: {
+    color: "#7A6C8F",
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  topIcon: {
+    padding: 6,
+    borderRadius: 10,
+    backgroundColor: "#F4ECFF",
+  },
+
+  // Header
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    columnGap: 14,
+    paddingVertical: 6,
+  },
+  avatar: {
+    width: 86,
+    height: 86,
+    borderRadius: 43,
+    backgroundColor: "#EEEAF8",
+    borderWidth: 3,
+    borderColor: "#FFFFFF",
+  },
+  nameBlock: {
+    flex: 1,
+    minHeight: 86,
     justifyContent: "center",
   },
-  btnPrimary: { backgroundColor: "#FF9EB3" },
-  btnPrimaryTxt: { color: "#fff", fontFamily: ui, fontWeight: "800" },
-  btnGhost: { backgroundColor: "#F6F3FF" },
-
-  /* Tabs */
-  tabs: {
-    marginTop: 16,
-    paddingHorizontal: 14,
-    flexDirection: "row",
-    gap: 8,
+  name: {
+    fontSize: 18,
+    fontWeight: "900",
+    color: "#2A2141",
   },
-  tabPill: {
-    flexDirection: "row",
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 14,
-    backgroundColor: "#F6F3FF",
-    alignItems: "center",
+  username: {
+    marginTop: 2,
+    fontSize: 13,
+    color: "#7A6C8F",
+    fontWeight: "700",
   },
-  tabPillActive: { backgroundColor: "#EDE7FF" },
-  tabPillTxt: { fontFamily: ui, color: "#6B4A8E", fontSize: 13 },
-  tabPillTxtActive: { color: "#3B2357", fontWeight: "700" },
-
-  /* Section generic */
-  sectionTitle: {
-    fontFamily: ui,
-    fontSize: 14,
-    fontWeight: "800",
-    color: "#3B2357",
-    marginBottom: 8,
-  },
-  card: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 14,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: "#EFEAF7",
+  bio: {
+    marginTop: 6,
+    fontSize: 12.5,
+    color: "#514766",
   },
 
-  /* Reading list */
-  readItem: {
+  actionsRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F4F1FB",
+    marginTop: 10,
   },
-  readBullet: { width: 8, height: 8, borderRadius: 4, backgroundColor: "#C9BEDF" },
-  readTitle: { fontFamily: serif, color: "#2F2840", fontSize: 16, lineHeight: 24 },
-  readMeta: { fontFamily: ui, color: "#8C7FA6", fontSize: 12, marginTop: 2 },
-
-  /* Meditación */
-  meditGrid: { flexDirection: "row", gap: 10 },
-  meditCard: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: "#E8E1F5",
+  editBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "#FF6CA3",
+    paddingVertical: 8,
+    paddingHorizontal: 12,
     borderRadius: 12,
-    padding: 12,
-    backgroundColor: "#FAF8FF",
+    shadowColor: "#FF6CA3",
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 3,
   },
-  meditIconWrap: {
+  editBadgeText: {
+    color: "#FFFFFF",
+    fontWeight: "800",
+    fontSize: 12,
+  },
+  secondaryIcon: {
     width: 28,
     height: 28,
-    borderRadius: 14,
-    backgroundColor: "#EFE8FF",
+    borderRadius: 8,
+    backgroundColor: "#F4ECFF",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  // Tabs
+  tabsRow: {
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 10,
+    marginBottom: 8,
+  },
+  tab: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    backgroundColor: "#FBF8FF",
+    borderWidth: 1,
+    borderColor: "#EADFF5",
+  },
+  tabActive: {
+    backgroundColor: "#F0E9FF",
+    borderColor: "#D7C8FF",
+  },
+  tabText: {
+    color: "#7A6C8F",
+    fontWeight: "800",
+    fontSize: 12,
+  },
+  tabTextActive: {
+    color: "#4B2FA7",
+  },
+
+  // Listas/cards
+  sectionTitle: {
+    marginTop: 10,
+    marginBottom: 8,
+    fontSize: 14,
+    fontWeight: "900",
+    color: "#3B2357",
+  },
+  cardList: {
+    gap: 10,
+  },
+  card: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    padding: 14,
+    borderRadius: 18,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#EADFF5",
+    shadowColor: "#000",
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 5 },
+    elevation: 2,
+  },
+  cardTitle: {
+    fontSize: 14,
+    color: "#2A2141",
+    fontWeight: "800",
+  },
+  cardSubtitle: {
+    marginTop: 4,
+    fontSize: 12,
+    color: "#9B8BB6",
+    fontWeight: "700",
+  },
+
+  // Tiles meditación
+  meditationRow: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  tile: {
+    flex: 1,
+    alignItems: "flex-start",
+    padding: 12,
+    borderRadius: 16,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#EADFF5",
+    shadowColor: "#000",
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
+  },
+  tileIconWrap: {
+    width: 28,
+    height: 28,
+    borderRadius: 10,
+    backgroundColor: "#F4ECFF",
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 8,
   },
-  meditTitle: { fontFamily: ui, fontWeight: "800", color: "#3B2357" },
-  meditSub: { fontFamily: ui, color: "#6B4A8E", fontSize: 12, marginTop: 2 },
-
-  /* Frases */
-  quoteCard: {
-    width: 240,
-    borderWidth: 1,
-    borderColor: "#E8E1F5",
-    backgroundColor: "#FFFFFF",
-    borderRadius: 12,
-    padding: 12,
+  tileTitle: {
+    fontSize: 13,
+    fontWeight: "900",
+    color: "#3B2357",
   },
-  quoteText: { fontFamily: serif, fontSize: 16, lineHeight: 24, color: "#2F2840" },
+  tileSubtitle: {
+    fontSize: 11,
+    color: "#9B8BB6",
+    fontWeight: "700",
+    marginTop: 2,
+  },
 
-  /* Grid de posts */
-  grid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
+  // Quote
+  quoteCard: {
+    marginTop: 6,
+    padding: 14,
+    borderRadius: 16,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#EADFF5",
     gap: 6,
   },
-  gridItem: { width: "32%", aspectRatio: 1, borderRadius: 8, overflow: "hidden" },
-  gridMedia: { flex: 1, backgroundColor: "#EDE9F7" },
-
-  /* Bottom bar */
-  tabbar: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
-    height: 64,
-    backgroundColor: "#FFFFFF",
-    borderTopWidth: 0.5,
-    borderTopColor: "#E8E1F5",
-    flexDirection: "row",
-    justifyContent: "space-around",
-    alignItems: "center",
+  quoteText: {
+    fontSize: 13,
+    color: "#3B2357",
+    fontStyle: "italic",
   },
-  tabItem: { alignItems: "center", justifyContent: "center", width: 56, height: 56 },
-  tabAdd: {
-    width: 68,
-    height: 40,
-    backgroundColor: "#FF9EB3",
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
+  quoteAuthor: {
+    fontSize: 12,
+    color: "#7A6C8F",
+    fontWeight: "700",
   },
-  miniAvatar: { width: 22, height: 22, borderRadius: 11, backgroundColor: "#D9D4E8" },
 });

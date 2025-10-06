@@ -1,14 +1,14 @@
 import { Link, router } from "expo-router";
 import React, { useContext, useState } from "react";
 import {
-  Alert,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    Alert,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from "react-native";
 import Svg, { Path } from "react-native-svg";
 import { AuthContext } from "../../contexts/AuthContext";

@@ -42,7 +42,7 @@ export default function Messages() {
           <Ionicons name="chevron-back" size={26} color="#3B2357" />
         </TouchableOpacity>
         <Text style={s.title}>Mensajes</Text>
-        <TouchableOpacity style={s.iconBtn} onPress={() => router.push("/(main)/profile")}>
+        <TouchableOpacity style={s.iconBtn} onPress={() => router.push("/(main)/Chats")}>
           <Ionicons name="person-circle-outline" size={26} color="#3B2357" />
         </TouchableOpacity>
       </View>
@@ -83,25 +83,6 @@ export default function Messages() {
       <TouchableOpacity style={s.fab} activeOpacity={0.9} onPress={() => {}}>
         <Ionicons name="create-outline" size={24} color="#fff" />
       </TouchableOpacity>
-
-      {/* Bottom bar */}
-      <View style={s.tabbar}>
-        <TouchableOpacity style={s.tabItem} onPress={() => router.push("/(main)/home")}>
-          <Ionicons name="home-outline" size={24} color="#3B2357" />
-        </TouchableOpacity>
-        <TouchableOpacity style={s.tabItem} onPress={() => router.push("/(main)/search")}>
-          <Ionicons name="search-outline" size={24} color="#3B2357" />
-        </TouchableOpacity>
-        <TouchableOpacity style={[s.tabItem, s.tabAdd]} onPress={() => router.push("/(main)/new-post")}>
-          <Ionicons name="add" size={26} color="#FFF" />
-        </TouchableOpacity>
-        <TouchableOpacity style={s.tabItem} onPress={() => router.push("/(main)/reels")}>
-          <Ionicons name="sparkles-outline" size={24} color="#3B2357" />
-        </TouchableOpacity>
-        <TouchableOpacity style={s.tabItem} onPress={() => router.push("/(main)/messages")}>
-          <Ionicons name="chatbubble-ellipses-outline" size={24} color="#3B2357" />
-        </TouchableOpacity>
-      </View>
     </SafeAreaView>
   );
 }

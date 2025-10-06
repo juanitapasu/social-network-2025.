@@ -168,24 +168,8 @@ export default function Search() {
         </Section>
       </ScrollView>
 
-      {/* Bottom bar (igual que en Home) */}
-      <View style={s.tabbar}>
-        <TouchableOpacity style={s.tabItem} onPress={() => router.push("/(main)/home")}>
-          <Ionicons name="home-outline" size={26} color="#3B2357" />
-        </TouchableOpacity>
-        <TouchableOpacity style={s.tabItem} onPress={() => router.push("/(main)/search")}>
-          <Ionicons name="search" size={26} color="#3B2357" />
-        </TouchableOpacity>
-        <TouchableOpacity style={[s.tabItem, s.tabAdd]} onPress={() => router.push("/(main)/new-post")}>
-          <Ionicons name="add" size={28} color="#FFF" />
-        </TouchableOpacity>
-        <TouchableOpacity style={s.tabItem} onPress={() => router.push("/(main)/reels")}>
-          <Ionicons name="sparkles-outline" size={26} color="#3B2357" />
-        </TouchableOpacity>
-        <TouchableOpacity style={s.tabItem} onPress={() => router.push("/(main)/profile")}>
-          <View style={s.miniAvatar} />
-        </TouchableOpacity>
-      </View>
+      
+      
     </View>
   );
 }
